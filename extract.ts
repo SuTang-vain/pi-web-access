@@ -1034,6 +1034,7 @@ export async function extractContent(
 		...(brightdataError ? [`Bright Data fallback failed: ${brightdataError}`] : []),
 		"",
 		"Fallback options:",
+		`  • Enable the keyless Jina Reader fallback: set "fetchRouting": { "providers": ["http", "jina"], "allowRemoteHostedProviders": true } in ${WEB_SEARCH_CONFIG_PATH} (target URLs are fetched through Jina's infrastructure)`,
 		`  • Set firecrawlBaseUrl in ${WEB_SEARCH_CONFIG_PATH} to a self-hosted Firecrawl instance`,
 		`  • Set crawl4aiBaseUrl in ${WEB_SEARCH_CONFIG_PATH} to a self-hosted Crawl4AI instance`,
 		`  • Set tinyfishApiKey in ${WEB_SEARCH_CONFIG_PATH} or TINYFISH_API_KEY`,
