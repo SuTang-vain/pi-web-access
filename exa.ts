@@ -190,15 +190,9 @@ function mapResults(results: ExaSearchResponse["results"] | ExaAnswerResponse["c
 
 function mapInlineContent(results: ExaSearchResponse["results"]): ExtractedContent[] {
 	if (!results?.length) return [];
-	return results
-		.filter((r): r is NonNullable<ExaSearchResponse["results"]>[number] & { url: string; text: string } =>
-			!!r?.url && typeof r.text === "string" && r.text.length > 0)
-		.map(r => ({
-			url: r.url,
-			title: r.title || "",
-			content: r.text,
-			error: null,
-		}));
+	return results.flatMap((r, i) => r?.url && typeof r.text === "string" && r.text.length > 0
+		? [{ url: r.url, title: r.title || fallbackSourceLabel(r.url, i), content: r.text, error: null }]
+		: []);
 }
 
 function toSearchResponse(
@@ -335,14 +329,9 @@ function buildAnswerFromMcpResults(results: McpParsedResult[]): string {
 }
 
 function mapMcpInlineContent(results: McpParsedResult[]): ExtractedContent[] {
-	return results
-		.filter(result => result.content.length > 0)
-		.map(result => ({
-			url: result.url,
-			title: result.title,
-			content: result.content,
-			error: null,
-		}));
+	return results.flatMap((result, i) => result.content.length > 0
+		? [{ url: result.url, title: result.title || fallbackSourceLabel(result.url, i), content: result.content, error: null }]
+		: []);
 }
 
 function buildMcpQuery(query: string, options: ExaSearchOptions): string {
