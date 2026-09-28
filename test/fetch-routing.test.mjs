@@ -18,7 +18,7 @@ function cleanProviderEnv(root) {
 	return childEnv;
 }
 
-async function runExtract(config) {
+async function runExtract(config, { jinaFails = false } = {}) {
 	const root = await mkdtemp(join(tmpdir(), "pi-fetch-routing-"));
 	await writeFile(join(root, "web-search.json"), JSON.stringify(config) + "\n", "utf8");
 	const childEnv = cleanProviderEnv(root);
@@ -29,7 +29,7 @@ async function runExtract(config) {
 			globalThis.fetch = async (url) => {
 				const text = String(url);
 				calls.push(text);
-				if (text.startsWith("https://r.jina.ai/")) {
+				if (text.startsWith("https://r.jina.ai/") && !${jinaFails}) {
 					return new Response("Markdown Content:\\n# Routed\\n\\n" + "Jina routed content. ".repeat(12), { status: 200 });
 				}
 				return new Response("blocked", { status: 403 });
@@ -100,6 +100,41 @@ test("fetchRouting without providers uses the default order when remote hosted p
 	]);
 	assert.equal(output.result.error, null);
 	assert.equal(output.result.title, "Routed");
+});
+
+const JINA_HINT = "Enable the keyless Jina Reader fallback";
+const JINA_PRIVACY = "target URLs are fetched through Jina's infrastructure";
+
+test("blocked-page guidance enables Jina with only the remote-hosted opt-in when Jina is already routed", async () => {
+	const output = await runExtract({});
+	const hint = output.result.error.split("\n").find(line => line.includes(JINA_HINT));
+	assert.ok(hint, output.result.error);
+	assert.match(hint, /set fetchRouting\.allowRemoteHostedProviders to true in .*web-search\.json/);
+	assert.match(hint, /Jina is already in your fetch provider order/);
+	assert.match(hint, /also allows the other hosted providers/);
+	assert.ok(hint.includes(JINA_PRIVACY), hint);
+	assert.doesNotMatch(hint, /"providers"|add "jina"/);
+});
+
+test("blocked-page guidance asks to add Jina to a custom provider list without replacing it", async () => {
+	const gated = await runExtract({ fetchRouting: { providers: ["http", "firecrawl"] } });
+	const gatedHint = gated.result.error.split("\n").find(line => line.includes(JINA_HINT));
+	assert.match(gatedHint, /add "jina" to your existing fetchRouting\.providers and set fetchRouting\.allowRemoteHostedProviders to true/);
+	assert.ok(gatedHint.includes(JINA_PRIVACY), gatedHint);
+
+	const allowed = await runExtract({ fetchRouting: { providers: ["http", "firecrawl"], allowRemoteHostedProviders: true } });
+	const allowedHint = allowed.result.error.split("\n").find(line => line.includes(JINA_HINT));
+	assert.match(allowedHint, /add "jina" to your existing fetchRouting\.providers in /);
+	assert.doesNotMatch(allowedHint, /allowRemoteHostedProviders/);
+	assert.ok(allowedHint.includes(JINA_PRIVACY), allowedHint);
+});
+
+test("blocked-page guidance does not suggest enabling Jina after Jina was attempted", async () => {
+	const output = await runExtract({ fetchRouting: { providers: ["http", "jina"], allowRemoteHostedProviders: true } }, { jinaFails: true });
+	assert.ok(output.calls.includes("https://r.jina.ai/https://example.com/routed"));
+	assert.match(output.result.error, /HTTP 403/);
+	assert.match(output.result.error, /Fallback options:/);
+	assert.ok(!output.result.error.includes(JINA_HINT), output.result.error);
 });
 
 test("disabled image fetching does not fall through to hosted providers", async () => {

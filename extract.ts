@@ -287,6 +287,21 @@ function notFoundGuidance(result: ExtractedContent, toolNames?: RegisteredToolNa
 	return lines.join("\n");
 }
 
+
+/** Fallback-list hint for the keyless Jina Reader. Returns null when Jina
+ * already ran for this fetch, and otherwise names only the config change still
+ * missing, so users keep their existing or default provider order. */
+function jinaReaderGuidance(routing: FetchRouting, providerOrder: FetchProvider[], needsRemoteOptIn: boolean): string | null {
+	if (providerOrder.includes("jina")) return null;
+	const privacy = "target URLs are fetched through Jina's infrastructure";
+	const optInCaveat = "this also allows the other hosted providers in your fetch provider order";
+	if (routing.providers.includes("jina")) {
+		return `  • Enable the keyless Jina Reader fallback: set fetchRouting.allowRemoteHostedProviders to true in ${WEB_SEARCH_CONFIG_PATH} (Jina is already in your fetch provider order; ${optInCaveat}; ${privacy})`;
+	}
+	return needsRemoteOptIn
+		? `  • Enable the keyless Jina Reader fallback: add "jina" to your existing fetchRouting.providers and set fetchRouting.allowRemoteHostedProviders to true in ${WEB_SEARCH_CONFIG_PATH} (${optInCaveat}; ${privacy})`
+		: `  • Enable the keyless Jina Reader fallback: add "jina" to your existing fetchRouting.providers in ${WEB_SEARCH_CONFIG_PATH} (${privacy})`;
+}
 function abortedResult(url: string): ExtractedContent {
 	return { url, title: "", content: "", error: "Aborted" };
 }
@@ -1020,6 +1035,7 @@ export async function extractContent(
 	}
 
 	const searchToolName = options?.toolNames?.webSearch;
+	const jinaHint = jinaReaderGuidance(fetchRouting, providerOrder, Boolean(remoteUrl) && !fetchRouting.allowRemoteHostedProviders);
 	const guidance = [
 		finalHttpResult?.error ?? "No fetch_content provider returned content",
 		...(firecrawlError ? [`Firecrawl fallback failed: ${firecrawlError}`] : []),
@@ -1034,7 +1050,7 @@ export async function extractContent(
 		...(brightdataError ? [`Bright Data fallback failed: ${brightdataError}`] : []),
 		"",
 		"Fallback options:",
-		`  • Enable the keyless Jina Reader fallback: set "fetchRouting": { "providers": ["http", "jina"], "allowRemoteHostedProviders": true } in ${WEB_SEARCH_CONFIG_PATH} (target URLs are fetched through Jina's infrastructure)`,
+		...(jinaHint ? [jinaHint] : []),
 		`  • Set firecrawlBaseUrl in ${WEB_SEARCH_CONFIG_PATH} to a self-hosted Firecrawl instance`,
 		`  • Set crawl4aiBaseUrl in ${WEB_SEARCH_CONFIG_PATH} to a self-hosted Crawl4AI instance`,
 		`  • Set tinyfishApiKey in ${WEB_SEARCH_CONFIG_PATH} or TINYFISH_API_KEY`,
