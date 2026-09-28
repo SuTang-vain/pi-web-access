@@ -146,6 +146,17 @@ function normalizeHighlights(value: unknown): string[] {
 	return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
 }
 
+export function fallbackSourceLabel(url: string | undefined, index: number): string {
+	if (url) {
+		try {
+			return new URL(url).hostname;
+		} catch {
+			// fall through to the generic label
+		}
+	}
+	return `Source ${index + 1}`;
+}
+
 function buildAnswerFromSearchResults(results: ExaSearchResponse["results"]): string {
 	if (!results?.length) return "";
 	const parts: string[] = [];
@@ -157,7 +168,7 @@ function buildAnswerFromSearchResults(results: ExaSearchResponse["results"]): st
 			? highlights.join(" ")
 			: typeof item.text === "string" ? item.text.trim().slice(0, 1000) : "";
 		if (!content) continue;
-		const sourceTitle = item.title || `Source ${i + 1}`;
+		const sourceTitle = item.title || fallbackSourceLabel(item.url, i);
 		parts.push(`${content}\nSource: ${sourceTitle} (${item.url})`);
 	}
 	return parts.join("\n\n");
@@ -170,7 +181,7 @@ function mapResults(results: ExaSearchResponse["results"] | ExaAnswerResponse["c
 		const item = results[i];
 		if (!item?.url) continue;
 		mapped.push({
-			title: item.title || `Source ${i + 1}`,
+			title: item.title || fallbackSourceLabel(item.url, i),
 			url: item.url,
 			snippet: "",
 		});
@@ -318,7 +329,7 @@ function buildAnswerFromMcpResults(results: McpParsedResult[]): string {
 		const result = results[i];
 		const snippet = result.content.replace(/\s+/g, " ").trim().slice(0, 500);
 		if (!snippet) continue;
-		const sourceTitle = result.title || `Source ${i + 1}`;
+		const sourceTitle = result.title || fallbackSourceLabel(result.url, i);
 		parts.push(`${snippet}\nSource: ${sourceTitle} (${result.url})`);
 	}
 	return parts.join("\n\n");
