@@ -146,13 +146,12 @@ function normalizeHighlights(value: unknown): string[] {
 	return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
 }
 
-export function fallbackSourceLabel(url: string | undefined, index: number): string {
-	if (url) {
-		try {
-			return new URL(url).hostname;
-		} catch {
-			// fall through to the generic label
-		}
+function fallbackSourceLabel(url: string | undefined, index: number): string {
+	try {
+		const hostname = url ? new URL(url).hostname : "";
+		if (hostname) return hostname;
+	} catch {
+		// Invalid URLs use the generic label.
 	}
 	return `Source ${index + 1}`;
 }

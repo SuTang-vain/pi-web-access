@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Exa results without a title are now labeled with their site's hostname, such as `cdn.jsdelivr.net`, instead of `Source N`. Results whose URL has no hostname, such as `mailto:` or `file:` links, still use `Source N`. Thanks to [@SuTang-vain](https://github.com/SuTang-vain) for [PR #469](https://github.com/nicobailon/pi-web-access/pull/469).
+
 ## [0.33.0] - 2026-09-27
 
 ### Highlights

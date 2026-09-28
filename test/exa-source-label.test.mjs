@@ -1,21 +1,62 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, test } from "node:test";
 
-const exaModuleUrl = new URL("../exa.ts", import.meta.url).href;
-const { fallbackSourceLabel } = await import(exaModuleUrl);
+process.env.PI_CODING_AGENT_DIR = mkdtempSync(join(tmpdir(), "pi-web-access-exa-label-"));
+delete process.env.EXA_API_KEY;
+delete process.env.EXA_BASE_URL;
 
-test("fallbackSourceLabel uses the URL hostname when the title is empty", () => {
-	assert.equal(
-		fallbackSourceLabel("https://cdn.jsdelivr.net/npm/pi-web-access@0.27.0/index.ts", 6),
-		"cdn.jsdelivr.net",
+const { searchWithExa } = await import(new URL("../exa.ts", import.meta.url).href);
+const originalFetch = globalThis.fetch;
+
+afterEach(() => {
+	globalThis.fetch = originalFetch;
+	delete process.env.EXA_API_KEY;
+});
+
+const resultUrls = [
+	"https://cdn.jsdelivr.net/npm/pi-web-access@0.27.0/index.ts",
+	"mailto:team@example.com",
+	"file:///tmp/notes.txt",
+	"not-a-url",
+	"https://example.com/kept",
+];
+const expectedTitles = ["cdn.jsdelivr.net", "Source 2", "Source 3", "Source 4", "Kept title"];
+
+function assertLabels(result) {
+	assert.deepEqual(result.results.map((item) => item.title), expectedTitles);
+	assert.deepEqual(
+		result.answer.split("\n").filter((line) => line.startsWith("Source: ")),
+		expectedTitles.map((title, i) => `Source: ${title} (${resultUrls[i]})`),
 	);
+}
+
+test("keyed Exa search labels untitled results by hostname, else Source N", async () => {
+	process.env.EXA_API_KEY = "exa-test-key";
+	globalThis.fetch = async (url) => {
+		assert.equal(String(url), "https://api.exa.ai/search");
+		return Response.json({
+			results: resultUrls.map((resultUrl, i) => ({
+				title: i === 4 ? "Kept title" : "",
+				url: resultUrl,
+				highlights: [`snippet ${i + 1}`],
+			})),
+		});
+	};
+
+	assertLabels(await searchWithExa("labels", { numResults: 10 }));
 });
 
-test("fallbackSourceLabel keeps the generic label for missing or invalid URLs", () => {
-	assert.equal(fallbackSourceLabel(undefined, 3), "Source 4");
-	assert.equal(fallbackSourceLabel("not-a-url", 3), "Source 4");
-});
+test("keyless Exa MCP search labels untitled results by hostname, else Source N", async () => {
+	const text = resultUrls
+		.map((resultUrl, i) => `Title: ${i === 4 ? "Kept title" : ""}\nURL: ${resultUrl}\nText: snippet ${i + 1}`)
+		.join("\n\n");
+	globalThis.fetch = async (url) => {
+		assert.ok(String(url).startsWith("https://mcp.exa.ai/mcp"));
+		return Response.json({ jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text }] } });
+	};
 
-test("fallbackSourceLabel indexes from one to match citation numbering", () => {
-	assert.equal(fallbackSourceLabel(undefined, 0), "Source 1");
+	assertLabels(await searchWithExa("labels"));
 });
