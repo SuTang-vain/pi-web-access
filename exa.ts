@@ -348,6 +348,7 @@ function buildMcpQuery(query: string, options: ExaSearchOptions): string {
 			case "year": parts.push(String(now.getFullYear())); break;
 		}
 	}
+	if (options.category) parts.push(options.category);
 	return parts.join(" ");
 }
 
@@ -417,7 +418,7 @@ async function searchWithFilteredExaMcp(
 async function searchWithExaMcp(query: string, options: ExaSearchOptions = {}): Promise<SearchResponse | null> {
 	const activityId = activityMonitor.logStart({ type: "api", query });
 	const basicArgs = { query: buildMcpQuery(query, options), numResults: options.numResults ?? 5 };
-	const filtered = !!options.includeContent || !!options.recencyFilter || !!options.domainFilter?.length;
+	const filtered = !!options.includeContent || !!options.recencyFilter || !!options.domainFilter?.length || !!options.category;
 
 	try {
 		const response = filtered

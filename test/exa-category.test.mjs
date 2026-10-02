@@ -52,3 +52,49 @@ test("keyed Exa forwards category to /search when set, and omits it when unset",
 		contents: { highlights: true },
 	});
 });
+
+async function keylessMcpRequestsFor(query, options, { advancedMissing = false } = {}) {
+	const home = await mkdtemp(join(tmpdir(), "pi-web-access-exa-category-mcp-"));
+	try {
+		const env = { ...process.env, HOME: home, USERPROFILE: home, PI_CODING_AGENT_DIR: home };
+		delete env.EXA_API_KEY;
+		delete env.EXA_BASE_URL;
+		delete env.XDG_CONFIG_HOME;
+		const child = spawnSync(process.execPath, ["--input-type=module"], {
+			input: `
+				const requests = [];
+				globalThis.fetch = async (url, init) => {
+					const body = JSON.parse(init.body);
+					requests.push({ tool: body.params.name, arguments: body.params.arguments });
+					if (${advancedMissing} && body.params.name === "web_search_advanced_exa") {
+						return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, error: { code: -32602, message: "Tool web_search_advanced_exa not found" } }), { status: 200 });
+					}
+					const text = body.params.name === "web_search_advanced_exa"
+						? JSON.stringify({ results: [{ title: "Paper", url: "https://example.org/paper", highlights: ["finding"] }] })
+						: "Title: Paper\\nURL: https://example.org/paper\\nText: finding\\n---";
+					return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text }] } }), { status: 200 });
+				};
+				const { searchWithExa } = await import(${JSON.stringify(exaModuleUrl)});
+				await searchWithExa(${JSON.stringify(query)}, ${JSON.stringify(options)});
+				console.log(JSON.stringify(requests));
+			`,
+			encoding: "utf8",
+			env,
+		});
+		assert.equal(child.status, 0, child.stderr);
+		return JSON.parse(child.stdout.trim());
+	} finally {
+		await rm(home, { recursive: true, force: true });
+	}
+}
+
+test("keyless Exa sends category to the advanced MCP tool and degrades it into the basic-tool query", async () => {
+	const [advanced] = await keylessMcpRequestsFor("transformer scaling", { category: "research paper" });
+	assert.equal(advanced.tool, "web_search_advanced_exa");
+	assert.equal(advanced.arguments.category, "research paper");
+	assert.equal(advanced.arguments.query, "transformer scaling");
+
+	const fallback = await keylessMcpRequestsFor("transformer scaling", { category: "research paper" }, { advancedMissing: true });
+	assert.deepEqual(fallback.map(request => request.tool), ["web_search_advanced_exa", "web_search_exa"]);
+	assert.deepEqual(fallback[1].arguments, { query: "transformer scaling research paper", numResults: 5 });
+});

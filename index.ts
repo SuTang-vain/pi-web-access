@@ -1854,7 +1854,7 @@ export default function (pi: ExtensionAPI) {
 				StringEnum(["day", "week", "month", "year"], { description: "Filter by recency" }),
 			),
 			domainFilter: Type.Optional(Type.Array(Type.String(), { description: "Limit to domains (prefix with - to exclude)" })),
-			category: Type.Optional(Type.String({ description: "Restrict results to a content category (e.g. 'research paper', 'news', 'pdf', 'company', 'github', 'tweet'). Exa only; ignored by other providers." })),
+			category: Type.Optional(Type.String({ description: "Exa only: result category, e.g. news, research paper" })),
 			provider: Type.Optional(searchProviderSchema(`Search provider or non-empty list of allowed providers to search simultaneously; ${allPolicyDescription}; omit this field to use the configured provider, or use auto when none is configured`, allowedSearchProviders)),
 			workflow: Type.Optional(
 				StringEnum(["none", "summary-review", "auto-summary"], {
