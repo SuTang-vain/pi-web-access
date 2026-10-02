@@ -264,6 +264,8 @@ export interface FullSearchOptions extends SearchOptions {
 	provider?: SearchProviderSelection;
 	includeContent?: boolean;
 	extensionContext?: ExtensionContext;
+	/** Forwarded to providers that understand it (currently Exa); ignored elsewhere. */
+	category?: string;
 }
 
 function errorMessage(err: unknown): string {

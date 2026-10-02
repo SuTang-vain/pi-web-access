@@ -619,6 +619,7 @@ interface PendingCurate {
 	numResults?: number;
 	recencyFilter?: "day" | "week" | "month" | "year";
 	domainFilter?: string[];
+	category?: string;
 	availableProviders: ProviderAvailability;
 	defaultProvider: SearchProvider;
 	searchProvider: SearchProviderSelection;
@@ -1695,6 +1696,7 @@ export default function (pi: ExtensionAPI) {
 								recencyFilter: pc.recencyFilter,
 								domainFilter: pc.domainFilter,
 								includeContent: pc.includeContent,
+								category: pc.category,
 								signal: addSearchSignal,
 								extensionContext: ctx,
 							});
@@ -1852,6 +1854,7 @@ export default function (pi: ExtensionAPI) {
 				StringEnum(["day", "week", "month", "year"], { description: "Filter by recency" }),
 			),
 			domainFilter: Type.Optional(Type.Array(Type.String(), { description: "Limit to domains (prefix with - to exclude)" })),
+			category: Type.Optional(Type.String({ description: "Restrict results to a content category (e.g. 'research paper', 'news', 'pdf', 'company', 'github', 'tweet'). Exa only; ignored by other providers." })),
 			provider: Type.Optional(searchProviderSchema(`Search provider or non-empty list of allowed providers to search simultaneously; ${allPolicyDescription}; omit this field to use the configured provider, or use auto when none is configured`, allowedSearchProviders)),
 			workflow: Type.Optional(
 				StringEnum(["none", "summary-review", "auto-summary"], {
@@ -1936,6 +1939,7 @@ export default function (pi: ExtensionAPI) {
 					numResults: params.numResults,
 					recencyFilter,
 					domainFilter: params.domainFilter,
+					category: params.category,
 					availableProviders,
 					defaultProvider,
 					searchProvider,
@@ -1997,6 +2001,7 @@ export default function (pi: ExtensionAPI) {
 							recencyFilter,
 							domainFilter: params.domainFilter,
 							includeContent: params.includeContent,
+							category: params.category,
 							signal: searchSignal,
 							extensionContext: ctx,
 						});
@@ -2100,6 +2105,7 @@ export default function (pi: ExtensionAPI) {
 						recencyFilter,
 						domainFilter: params.domainFilter,
 						includeContent: params.includeContent,
+						category: params.category,
 						signal,
 						extensionContext: ctx,
 					});

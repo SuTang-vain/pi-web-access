@@ -43,6 +43,8 @@ export type ExaSearchResult = SearchResponse | null;
 
 export interface ExaSearchOptions extends SearchOptions {
 	includeContent?: boolean;
+	/** Restrict results to an Exa content category (e.g. "research paper", "news", "pdf"). */
+	category?: string;
 }
 
 type McpParsedResult = { title: string; url: string; content: string };
@@ -132,6 +134,7 @@ function exaSearchArgs(query: string, options: ExaSearchOptions): Record<string,
 		type: "auto",
 		numResults: options.numResults ?? 5,
 		...mapDomainFilter(options.domainFilter),
+		...(options.category ? { category: options.category } : {}),
 		...(startDate ? { startPublishedDate: startDate } : {}),
 	};
 }

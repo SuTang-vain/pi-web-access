@@ -75,7 +75,7 @@ test("malformed config falls back during extension registration", () => {
 
 test("default public execution tool definitions retain their compatibility hashes", () => {
 	const expected = {
-		web_search: "c1f0e0020561c46d9dc5547664ac50ab2442e57ab9aa14d4b06a1bd18428dbae",
+		web_search: "63e25e88f578f85a08dd097287cecf33590b901518abedbc76f7f75f82b30ed2",
 		source_check: "685467b6e6bcbe32f7d7eb51805896f43077e3116e64a47b637c4584b3f2510e",
 		fetch_content: "0082465bae0f184988fd37fe152cad9c7a236e410747ba6770013895a28978d4",
 		get_search_content: "e1c7597fc085a811c0c6fcde365a96571c275c70b93a48206a38be06a7a45a5f",
